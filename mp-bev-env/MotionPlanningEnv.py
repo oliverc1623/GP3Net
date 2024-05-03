@@ -77,10 +77,18 @@ class MotionPlanningEnv(gym.Env):
         self.client.load_world('Town01')
         ego_bp = self.world.get_blueprint_library().find('vehicle.dodge.charger_2020')
         ego_bp.set_attribute('role_name','ego')
-    
-    def _follow_vehicle(self, client, vehicle, offset=carla.Location(x=-6, z=2), pitch=-15):
-        spectator = world.get_spectator()
-        transform = vehicle.get_transform()
+        route, point_a, point_b = self._get_route()
+        self.ego_vehicle = self.world.spawn_actor(ego_bp, point_a)
+        print('Ego is spawned')
+        self._follow_vehicle()
+        self.myAgent = CustomAgent(vehicle=self.ego_vehicle, route_plan=route)
+        destination = point_b.location
+        self.myAgent.set_destination(destination)
+        self.myAgent.ignore_traffic_lights(active=True)
+
+    def _follow_vehicle(self, offset=carla.Location(x=-6, z=2), pitch=-15):
+        spectator = self.world.get_spectator()
+        transform = self.ego_vehicle.get_transform()
         location = transform.location + transform.get_forward_vector() * offset.x + carla.Location(z=offset.z)
         rotation = carla.Rotation(pitch=pitch, yaw=transform.rotation.yaw + 0, roll=0)
         spectator.set_transform(carla.Transform(location, rotation))
@@ -98,16 +106,16 @@ class MotionPlanningEnv(gym.Env):
         i = 0
         for w in w1:
             if i % 10 == 0:
-                world.debug.draw_string(w[0].transform.location, 'O', draw_shadow=False,
+                self.world.debug.draw_string(w[0].transform.location, 'O', draw_shadow=False,
                 color=carla.Color(r=255, g=0, b=0), life_time=120.0,
                 persistent_lines=True)
             else:
-                world.debug.draw_string(w[0].transform.location, 'O', draw_shadow=False,
+                self.world.debug.draw_string(w[0].transform.location, 'O', draw_shadow=False,
                 color = carla.Color(r=0, g=0, b=255), life_time=1000.0,
                 persistent_lines=True)
             i += 1
-        # Return route, point A
-        return w1, a
+        # Return route, point A, point B 
+        return w1, point_a, point_b
     
     def step(self, action):
         pass
